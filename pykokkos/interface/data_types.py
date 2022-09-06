@@ -34,9 +34,11 @@ class DataTypeClass:
 
 class uint8(DataTypeClass):
     value = kokkos.uint8
+    np_equiv = np.uint8
 
 class int8(DataTypeClass):
     value = kokkos.int8
+    np_equiv = np.int8
 
 class int16(DataTypeClass):
     value = kokkos.int16
