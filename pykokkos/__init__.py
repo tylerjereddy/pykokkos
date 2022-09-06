@@ -31,7 +31,8 @@ from pykokkos.lib.ufuncs import (reciprocal,
                                  square,
                                  greater,
                                  logaddexp,
-                                 equal)
+                                 equal,
+                                 isnan)
 from pykokkos.lib.info import iinfo, finfo
 from pykokkos.lib.create import zeros, ones
 from pykokkos.lib.util import all, any
