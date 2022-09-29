@@ -20,12 +20,16 @@ pytest_args = []
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--specifictests', type=str)
 parser.add_argument('-d', '--durations', type=int)
+parser.add_argument('-c', '--coverage', type=str)
 args = parser.parse_args()
 
 if args.specifictests:
     pytest_args.append(args.specifictests)
 if args.durations:
     pytest_args.append(f"--durations={args.durations}")
+if args.coverage:
+    pytest_args.append(f"--cov-report xml")
+
 
 # force pytest to actually import
 # all the test modules directly
