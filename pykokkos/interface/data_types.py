@@ -25,7 +25,7 @@ class DataType(Enum):
     float32 = kokkos.float
     float64 = kokkos.double
     real = None
-    bool = np.bool_
+    bool = kokkos.bool
 
 
 class DataTypeClass:
@@ -89,5 +89,5 @@ class float64(DataTypeClass):
     np_equiv = np.float64
 
 class bool(DataTypeClass):
-    value = kokkos.uint8
+    value = kokkos.bool
     np_equiv = np.bool_

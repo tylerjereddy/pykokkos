@@ -408,16 +408,8 @@ class View(ViewType):
                 print("array:", array)
                 self.array = array
             else:
-                print("dtype before true crash:", self.dtype)
-                print("dtype.value before true crash:", self.dtype.value)
-                print("array.dtype:", array.dtype)
-                print("array:", array)
-                #if np.issubdtype(array.dtype, np.bool_):
-                    # we can't handle genuine bool type in
-                    # pykokkos-base at this time
-                    #array = np.asarray(array, dtype=np.uint8)
-                #self.array = kokkos_lib.unmanaged_array(array, dtype=self.dtype.value, space=self.space.value, layout=self.layout.value)
-                    #self.dtype = pk.bool
+                print("**** dtype before true crash:", self.dtype)
+                print("**** dtype.value before true crash:", self.dtype.value)
                 self.array = kokkos_lib.unmanaged_array(array, dtype=self.dtype.value, space=self.space.value, layout=self.layout.value)
                 print("not 0D!")
                 print("self.array:", self.array)
@@ -455,7 +447,11 @@ class View(ViewType):
             return DataType["int32"]
         if dtype is float:
             return DataType["double"]
+        if dtype is bool:
+            print("_get_type received bool so returning type:", DataType['bool'])
+            return DataType["bool"]
 
+        print("dtype before returning None in _get_type:", dtype)
         return None
 
 
@@ -642,7 +638,7 @@ def from_numpy(array: np.ndarray, space: Optional[MemorySpace] = None, layout: O
     elif np_dtype is np.float64:
         dtype = float64
     elif np_dtype is np.bool_:
-        dtype = uint8
+        dtype = bool
     else:
         raise RuntimeError(f"ERROR: unsupported numpy datatype {np_dtype}")
 
@@ -664,9 +660,9 @@ def from_numpy(array: np.ndarray, space: Optional[MemorySpace] = None, layout: O
         ret_list = ()
         if np_dtype == np.bool_:
             if array == 1:
-                array = np.array(1, dtype=np.uint8)
+                array = np.array(1, dtype=np.bool_)
             else:
-                array = np.array(0, dtype=np.uint8)
+                array = np.array(0, dtype=np.bool_)
         else:
             array = np.array(array, dtype=np_dtype)
     else:
