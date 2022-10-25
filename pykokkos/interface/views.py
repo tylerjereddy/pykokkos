@@ -84,6 +84,8 @@ class ViewType:
         :returns: an int representing the length of the specified dimension
         """
 
+        print("extent received dimension:", dimension)
+        print("self.rank() is:", self.rank())
         if dimension >= self.rank() and not (dimension == 0 and self.shape == ()):
             raise ValueError(
                 "\"dimension\" must be less than the view's rank")
@@ -110,18 +112,92 @@ class ViewType:
         :returns: a primitive type value if key is an int, a Subview otherwise
         """
 
+        print("start getitem")
+        print("key:", key)
+        if isinstance(key, slice):
+            print("key is a slice!!")
+        else:
+            print("key is not a slice!")
         if self.shape == () and key == 0:
             return self.data
 
         if isinstance(key, int) or isinstance(key, TeamMember):
             return self.data[key]
 
+        print("self:", self)
+        print("self.dtype:", self.dtype)
+        print("key:", key)
+        if key == () or key == Ellipsis:
+            print("self.rank:", self.rank())
+            #if self.data.ndim == 0:
+                #self.shape = ()
+                #return np.array(self)[()]
+            print("self:", self)
+            print("ret self:", self)
+            print("ret self.shape:", self.shape)
+            print("ret self.data.shape:", self.data.shape)
+            return self
+        if key == (None,) or key == None or key == (Ellipsis, None):
+            self.shape = (1,)
+            return self
         length: int = 1 if isinstance(key, slice) else len(key)
-        if length != self.rank():
+        if not isinstance(key, slice):
+            new_shape = []
+            print("new key:", key)
+            print("new key len():", len(key))
+            if key.count(Ellipsis) == len(key):
+                return self
+            for counter, element in enumerate(key):
+                if element is None:
+                    new_shape.append(1)
+                elif isinstance(element, slice):
+                    if element.start is None and element.stop is None:
+                        new_shape.append(0)
+                elif element == Ellipsis and self.shape != ():
+                    new_shape.append(0)
+            print("new_shape:", new_shape)
+            new_shape = tuple(new_shape)
+            print("new_shape:", new_shape)
+            print("new_shape:", new_shape)
+            self.ndim = len(new_shape)
+            self.shape = new_shape
+            print("new return...")
+            return self
+
+        if length != self.rank() and self.rank() != 0:
+            print("before ValueError!!!")
+            print("self:", self)
+            print("key:", key)
+            print("length:", length)
+            print("self.rank:", self.rank())
             raise ValueError("Please include slices for all dimensions")
 
         subview = Subview(self, key)
+        if key == (Ellipsis,):
+            print("adjusting shape!!!")
+            subview.shape = self.shape
+            print('returning subview:', subview)
+            print('returning subview.shape:', subview.shape)
+            print('returning subview.size:', subview.size)
+            return subview
 
+        print("returning subview", subview)
+        #print("len(key):", len(key))
+        if not isinstance(key, slice):
+            print("key is not slice!!")
+            if len(key) == 1 and isinstance(key[0], slice):
+                print("check A")
+                if key[0].start is None and key[0].stop is None:
+                    print("setting subview shape!")
+                    subview.shape = self.shape
+            else:
+                if key.count(None) == len(key):
+                    print("key is all None!")
+                    out_shape = tuple([1 for element in key])
+                    subview.shape = out_shape
+        else:
+            if key.start is None and key.stop is None:
+                subview.shape = self.shape
         return subview
 
     def __setitem__(self, key: Union[int, TeamMember], value: Union[int, float]) -> None:
@@ -297,7 +373,9 @@ class View(ViewType):
         self.shape: Tuple[int] = tuple(shape)
         self.size: int = math.prod(shape)
         self.ndim: int = len(shape)
+        print("dtype:", dtype)
         self.dtype: Optional[DataType] = self._get_type(dtype)
+        print("self.dtype:", self.dtype)
         if self.dtype is None:
             sys.exit(f"ERROR: Invalid dtype {dtype}")
 
@@ -326,11 +404,26 @@ class View(ViewType):
             if array is not None and array.ndim == 0:
                 # TODO: we don't really support 0-D under the hood--use
                 # NumPy for now...
+                print("0D array!")
+                print("array:", array)
                 self.array = array
             else:
+                print("dtype before true crash:", self.dtype)
+                print("dtype.value before true crash:", self.dtype.value)
+                print("array.dtype:", array.dtype)
+                print("array:", array)
+                #if np.issubdtype(array.dtype, np.bool_):
+                    # we can't handle genuine bool type in
+                    # pykokkos-base at this time
+                    #array = np.asarray(array, dtype=np.uint8)
+                #self.array = kokkos_lib.unmanaged_array(array, dtype=self.dtype.value, space=self.space.value, layout=self.layout.value)
+                    #self.dtype = pk.bool
                 self.array = kokkos_lib.unmanaged_array(array, dtype=self.dtype.value, space=self.space.value, layout=self.layout.value)
+                print("not 0D!")
+                print("self.array:", self.array)
         else:
             if len(self.shape) == 0:
+                print("setting shape to [1]!")
                 shape = [1]
             self.array = kokkos_lib.array("", shape, None, None, self.dtype.value, space.value, layout.value, trait.value)
         self.data = np.array(self.array, copy=False)
@@ -367,12 +460,29 @@ class View(ViewType):
 
 
     def __eq__(self, other):
+        print("start of __eq__ in View")
+        print("self:", self)
+        print("type(self):", type(self))
+        print("other:", other)
+        print("type(other):", type(other))
         if not isinstance(other, pk.View) and self.rank() > 0:
+            print("case a")
             return [i == other for i in self]
 
         if self.array == other:
+            print("case b")
             return True
         else:
+            print("case c")
+            if isinstance(other, View):
+                result_of_eq = self.data == other.data
+                return result_of_eq
+            print(self, other)
+            print(type(self))
+            print(type(other))
+            print(dir(other))
+            print(type(self[0]))
+            print(type(other[0]))
             return False
 
 
@@ -487,7 +597,9 @@ class Subview(ViewType):
 
     def __eq__(self, other):
         if isinstance(other, View):
-            if len(self.data) == 0 and len(other.data) == 0:
+            if np.issubdtype(self.data.dtype, np.integer):
+                result_of_eq = self.data == other.data
+            elif len(self.data) == 0 and len(other.data) == 0:
                 return True
             result_of_eq = self.data == other.data
             return result_of_eq
@@ -561,6 +673,7 @@ def from_numpy(array: np.ndarray, space: Optional[MemorySpace] = None, layout: O
         ret_list = list((array.shape))
 
 
+    print("dtype before crash:", dtype)
     return View(ret_list, dtype, space=space, trait=Trait.Unmanaged, array=array, layout=layout)
 
 def from_cupy(array) -> ViewType:
@@ -626,14 +739,24 @@ def asarray(obj, /, *, dtype=None, device=None, copy=None):
     # TODO: proper implementation/design
     # for now, let's cheat and use NumPy asarray() followed
     # by pykokkos from_numpy()
-    if obj in {pk.e, pk.pi, pk.inf, pk.nan}:
+    print(" **** start asarray")
+    print("obj:", obj)
+    print("type(obj):", type(obj))
+    print("dtype:", dtype)
+    if obj in [pk.e, pk.pi, pk.inf, pk.nan, True, False]:
         if dtype is None:
             dtype = pk.float64
         view = pk.View([1], dtype=dtype)
         view[:] = obj
+        view.shape = ()
+        print("view ret:", view)
+        print("view.shape:", view.shape)
+        print(" **** end asarray")
         return view
     if dtype is not None:
+        print("dtype.np_equiv:", dtype.np_equiv)
         arr = np.asarray(obj, dtype=dtype.np_equiv)
+        print("arr:", arr)
     else:
         arr = np.asarray(obj)
     ret = from_numpy(arr)

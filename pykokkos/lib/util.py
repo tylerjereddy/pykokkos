@@ -8,6 +8,7 @@ import numpy as np
 # https://data-apis.org/array-api/2021.12/API_specification/utility_functions.html
 
 def all(x, /, *, axis=None, keepdims=False):
+    print("all received x:", x)
     if x == True:
         return True
     elif x == False:
