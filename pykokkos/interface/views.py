@@ -113,19 +113,27 @@ class ViewType:
         """
 
         print("start getitem")
+        print("self:", self)
+        print("self.dtype:", self.dtype)
+        print("self.shape:", self.shape)
         print("key:", key)
         if isinstance(key, slice):
             print("key is a slice!!")
         else:
             print("key is not a slice!")
         if self.shape == () and key == 0:
+            print("chk A")
             return self.data
 
         if isinstance(key, int) or isinstance(key, TeamMember):
+            print("chk B")
+            print("returning self.data[key]:", self.data[key])
+            print("returning type(self.data[key]):", type(self.data[key]))
             return self.data[key]
 
         print("self:", self)
         print("self.dtype:", self.dtype)
+        print("self.shape:", self.shape)
         print("key:", key)
         if key == () or key == Ellipsis:
             print("self.rank:", self.rank())
@@ -153,7 +161,7 @@ class ViewType:
                 elif isinstance(element, slice):
                     if element.start is None and element.stop is None:
                         new_shape.append(0)
-                elif element == Ellipsis and self.shape != ():
+                elif element == Ellipsis and self.shape != () and counter != 0:
                     new_shape.append(0)
             print("new_shape:", new_shape)
             new_shape = tuple(new_shape)
@@ -410,6 +418,8 @@ class View(ViewType):
             else:
                 print("**** dtype before true crash:", self.dtype)
                 print("**** dtype.value before true crash:", self.dtype.value)
+                print("array before crash:", array)
+                print("array.dtype before crash:", array.dtype)
                 self.array = kokkos_lib.unmanaged_array(array, dtype=self.dtype.value, space=self.space.value, layout=self.layout.value)
                 print("not 0D!")
                 print("self.array:", self.array)
@@ -638,7 +648,9 @@ def from_numpy(array: np.ndarray, space: Optional[MemorySpace] = None, layout: O
     elif np_dtype is np.float64:
         dtype = float64
     elif np_dtype is np.bool_:
+        print("returning bool dtype!!!")
         dtype = bool
+        print("dtype:", dtype)
     else:
         raise RuntimeError(f"ERROR: unsupported numpy datatype {np_dtype}")
 
@@ -756,6 +768,12 @@ def asarray(obj, /, *, dtype=None, device=None, copy=None):
     else:
         arr = np.asarray(obj)
     ret = from_numpy(arr)
+    print("ret from asarray:", ret)
+    if len(ret) == 1:
+        print("ret[0] from asarray:", ret[0])
+        print("type ret[0] from asarray:", type(ret[0]))
+    print("ret.dtype from asarray:", ret.dtype)
+    print(" **** end asarray")
     return ret
 
 
