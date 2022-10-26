@@ -22,7 +22,7 @@ from .data_types import (
     int16, int32, int64,
     uint8,
     uint16, uint32, uint64,
-    double, float64,
+    double, float64, bool,
 )
 from .layout import get_default_layout, Layout
 from .memory_space import get_default_memory_space, MemorySpace

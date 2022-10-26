@@ -35,7 +35,8 @@ view_dtypes: Dict[str, Union[cppast.BuiltinType, str]] = {
 
     "int": cppast.BuiltinType.INT32,
 
-    "real": Keywords.RealPrecision.value
+    "real": Keywords.RealPrecision.value,
+    "bool": cppast.BuiltinType.BOOL
 }
 
 op2str: Dict[type, str] = {
@@ -295,7 +296,7 @@ def cpp_view_type(
     for t in template_params:
         parameter: str = s.serialize(t)
 
-        if parameter in ("int", "double", "float",
+        if parameter in ("int", "double", "float", "bool",
                             "int8_t", "int16_t", "int32_t", "int64_t",
                             "uint8_t", "uint16_t", "uint32_t", "uint64_t"):
             datatype: str = parameter + "*" * rank
