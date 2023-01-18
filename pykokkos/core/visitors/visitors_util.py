@@ -94,6 +94,7 @@ math_functions: Set = {
     "hypot",
     "isfinite",
     "isinf",
+    "isless",
     "isnan",
     "isqrt",
     "log",

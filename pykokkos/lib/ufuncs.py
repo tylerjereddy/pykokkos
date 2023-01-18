@@ -8,6 +8,58 @@ from pykokkos.lib import ufunc_workunits
 
 kernel_dict = dict(getmembers(ufunc_workunits, isfunction))
 
+def _broadcast_views(view1, view2):
+    # support broadcasting by using the same
+    # shape matching rules as NumPy
+    # TODO: determine if this can be done with
+    # more memory efficiency?
+    if view1.shape != view2.shape:
+        new_shape = np.broadcast_shapes(view1.shape, view2.shape)
+        view1_new = pk.View([*new_shape], dtype=view1.dtype)
+        view1_new[:] = view1
+        view1 = view1_new
+        view2_new = pk.View([*new_shape], dtype=view2.dtype)
+        view2_new[:] = view2
+        view2 = view2_new
+    return view1, view2
+
+
+def _typematch_views(view1, view2):
+    # very crude casting implementation
+    # for binary ufuncs
+    dtype1 = view1.dtype
+    dtype2 = view2.dtype
+    dtype_extractor = re.compile(r".*(?:data_types|DataType)\.(\w+)")
+    res1 = dtype_extractor.match(str(dtype1))
+    res2 = dtype_extractor.match(str(dtype2))
+    effective_dtype = dtype1
+    if res1 is not None and res2 is not None:
+        res1_dtype_str = res1.group(1)
+        res2_dtype_str = res2.group(1)
+        if res1_dtype_str == "double":
+            res1_dtype_str = "float64"
+        elif res1_dtype_str == "float":
+            res1_dtype_str = "float32"
+        if res2_dtype_str == "double":
+            res2_dtype_str = "float64"
+        elif res2_dtype_str == "float":
+            res2_dtype_str = "float32"
+        if (("int" in res1_dtype_str and "int" in res2_dtype_str) or
+            ("float" in res1_dtype_str and "float" in res2_dtype_str)):
+            dtype_1_width = int(res1_dtype_str.split("t")[1])
+            dtype_2_width = int(res2_dtype_str.split("t")[1])
+            if dtype_1_width >= dtype_2_width:
+                effective_dtype = dtype1
+                view2_new = pk.View([*view2.shape], dtype=effective_dtype)
+                view2_new[:] = view2
+                view2 = view2_new
+            else:
+                effective_dtype = dtype2
+                view1_new = pk.View([*view1.shape], dtype=effective_dtype)
+                view1_new[:] = view1
+                view1 = view1_new
+    return view1, view2, effective_dtype
+
 
 def _supported_types_check(dtype_str, supported_type_strings):
     options = ""
@@ -37,6 +89,7 @@ def _ufunc_kernel_dispatcher(tid,
         dtype_str = "double"
     function_name_str = f"{op}_impl_{ndims}d_{dtype_str}"
     desired_workunit = kernel_dict[function_name_str]
+    print("desired_workunit:", desired_workunit)
     # call the kernel
     ret = sub_dispatcher(tid, desired_workunit, **kwargs)
     return ret
@@ -1646,16 +1699,6 @@ def logaddexp2(viewA, viewB):
     return out
 
 
-@pk.workunit
-def floor_divide_impl_1d_double(tid: int, viewA: pk.View1D[pk.double], viewB: pk.View1D[pk.double], out: pk.View1D[pk.double]):
-    out[tid] = viewA[tid] // viewB[tid]
-
-
-@pk.workunit
-def floor_divide_impl_1d_float(tid: int, viewA: pk.View1D[pk.float], viewB: pk.View1D[pk.float], out: pk.View1D[pk.float]):
-    out[tid] = viewA[tid] // viewB[tid]
-
-
 def floor_divide(viewA, viewB):
     """
     Divides positionally corresponding elements
@@ -1674,29 +1717,29 @@ def floor_divide(viewA, viewB):
            Output view.
 
     """
-    if len(viewA.shape) > 1 or len(viewB.shape) > 1:
-        raise NotImplementedError("only 1D views currently supported for floor_divide() ufunc.")
-    if str(viewA.dtype) == "DataType.double" and str(viewB.dtype) == "DataType.double":
-        out = pk.View([viewA.shape[0]], pk.double)
-        pk.parallel_for(
-            viewA.shape[0],
-            floor_divide_impl_1d_double,
-            viewA=viewA,
-            viewB=viewB,
-            out=out)
-
-    elif str(viewA.dtype) == "DataType.float" and str(viewB.dtype) == "DataType.float":
-        out = pk.View([viewA.shape[0]], pk.float)
-        pk.parallel_for(
-            viewA.shape[0],
-            floor_divide_impl_1d_float,
-            viewA=viewA,
-            viewB=viewB,
-            out=out)
+    #print("viewA, viewB:", viewA, viewB)
+    view1, view2 = _broadcast_views(viewA, viewB)
+    view1, view2, effective_dtype = _typematch_views(view1, view2)
+    ndims1 = len(view1.shape)
+    ndims2 = len(view2.shape)
+    if ndims1 > 5 or ndims2 > 5:
+        raise NotImplementedError("floor_divide() ufunc only supports up to 5D views")
+    if view1.size == 0:
+        return pk.View([*view1.shape], dtype=effective_dtype)
+    out = pk.View([*view1.shape], dtype=effective_dtype)
+    if view1.shape == ():
+        tid = 1
     else:
-        raise RuntimeError("Incompatible Types")
+        tid = view1.shape[0]
+    _ufunc_kernel_dispatcher(tid=tid,
+                             dtype=effective_dtype,
+                             ndims=ndims1,
+                             op="floor_divide",
+                             sub_dispatcher=pk.parallel_for,
+                             out=out,
+                             viewA=view1,
+                             viewB=view2)
     return out
-
 
 @pk.workunit
 def sin_impl_1d_double(tid: int, view: pk.View1D[pk.double], out: pk.View1D[pk.double]):
