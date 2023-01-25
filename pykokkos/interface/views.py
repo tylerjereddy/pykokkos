@@ -367,12 +367,25 @@ class View(ViewType):
 
 
     def __eq__(self, other):
+        print("start of view __eq__")
+        print("self:", self)
+        print("other:", other)
         if not isinstance(other, pk.View) and self.rank() > 0:
             return [i == other for i in self]
 
-        if self.array == other:
+        if (self.array == other or
+           (other.shape == (0,) and self.shape == (0,)) or
+           (other.shape == (0, 0) and self.shape == (0, 0)) or
+           (other.shape == () and self.shape == ())
+            ):
+            return True
+        elif ((len(self.shape) > 1 and len(other.shape) > 1) and
+             (self.shape[0] == 0 and other.shape[0] == 0)):
             return True
         else:
+            print("view __eq__ is returning False!")
+            print("other shape:", other.shape)
+            print("other ndim:", other.ndim)
             return False
 
 
@@ -490,11 +503,31 @@ class Subview(ViewType):
         return base_view
 
     def __eq__(self, other):
+        print("subview __eq__ received self:", self)
+        print("subview __eq__ received self.shape:", self.shape)
+        print("subview __eq__ received other:", other)
+        if isinstance(other, float):
+            print("other is float!")
+            print("self.data:", self.data)
+            print("other:", other)
+            return self.data[0] == other
+
         if isinstance(other, View):
             if len(self.data) == 0 and len(other.data) == 0:
                 return True
             result_of_eq = self.data == other.data
             return result_of_eq
+        if (self.array == other or
+           (other.shape == (0,) and self.shape == (0,)) or
+           (other.shape == (0, 0) and self.shape == (0, 0)) or
+           (other.shape == () and self.shape == ())
+            ):
+            return True
+        elif ((len(self.shape) > 1 and len(other.shape) > 1) and
+             (self.shape[0] == 0 and other.shape[0] == 0)):
+            return True
+        else:
+            return [i == other for i in self]
 
 
     def __add__(self, other):

@@ -37,6 +37,7 @@ def _ufunc_kernel_dispatcher(tid,
         dtype_str = "double"
     function_name_str = f"{op}_impl_{ndims}d_{dtype_str}"
     desired_workunit = kernel_dict[function_name_str]
+    print("desired_workunit:", desired_workunit)
     # call the kernel
     ret = sub_dispatcher(tid, desired_workunit, **kwargs)
     return ret
@@ -1103,6 +1104,7 @@ def positive_impl_1d_double(tid: int, view: pk.View1D[pk.double], out: pk.View1D
 def positive_impl_1d_float(tid: int, view: pk.View1D[pk.float], out: pk.View1D[pk.float]):
     out[tid] = view[tid]
 
+
 def positive(view):
     """
     Element-wise positive of the view;
@@ -1119,16 +1121,30 @@ def positive(view):
            Output view.
 
     """
-    if len(view.shape) > 1:
-        raise NotImplementedError("only 1D views currently supported for positive() ufunc.")
-    if str(view.dtype) == "DataType.double":
-        out = pk.View([view.shape[0]], pk.double)
-        pk.parallel_for(view.shape[0], positive_impl_1d_double, view=view, out=out)
-    elif str(view.dtype) == "DataType.float":
-        out = pk.View([view.shape[0]], pk.float)
-        pk.parallel_for(view.shape[0], positive_impl_1d_float, view=view, out=out)
+    print("positive received view:", view)
+    dtype = view.dtype
+    print("positive received view.dtype:", view.dtype)
+    ndims = len(view.shape)
+    print("positive received view size:", view.size)
+    print("positive received view shape:", view.shape)
+    if view.size == 0:
+        print("*** returning view from positive():", view)
+        return view
+    if ndims > 2:
+        raise NotImplementedError("positive() ufunc only supports up to 2D views")
+    out = pk.View([*view.shape], dtype=dtype)
+    if view.shape == ():
+        tid = 1
     else:
-        raise NotImplementedError
+        tid = view.shape[0]
+    _ufunc_kernel_dispatcher(tid=tid,
+                             dtype=dtype,
+                             ndims=ndims,
+                             op="positive",
+                             sub_dispatcher=pk.parallel_for,
+                             out=out,
+                             view=view)
+    print("*** returning out from positive():", out)
     return out
 
 
@@ -2384,31 +2400,23 @@ def index(viewA, viewB):
     return out
 
 
-@pk.workunit
-def isnan_impl_1d_double(tid: int, view: pk.View1D[pk.double], out: pk.View1D[pk.uint8]):
-    out[tid] = isnan(view[tid])
-
-
-@pk.workunit
-def isnan_impl_1d_float(tid: int, view: pk.View1D[pk.float], out: pk.View1D[pk.uint8]):
-    out[tid] = isnan(view[tid])
-
-
 def isnan(view):
-    if len(view.shape) > 1:
-        raise NotImplementedError("isnan() ufunc only supports 1D views")
-    out = pk.View([*view.shape], dtype=pk.uint8)
-    if "double" in str(view.dtype) or "float64" in str(view.dtype):
-        pk.parallel_for(view.shape[0],
-                        isnan_impl_1d_double,
-                        view=view,
-                        out=out)
-    elif "float" in str(view.dtype):
-        pk.parallel_for(view.shape[0],
-                        isnan_impl_1d_float,
-                        view=view,
-                        out=out)
-    return out
+    dtype = view.dtype
+    ndims = len(view.shape)
+    if ndims > 2:
+        raise NotImplementedError("isnan() ufunc only supports up to 2D views")
+    out = pk.View([*view.shape], dtype=pk.bool)
+    if view.shape == ():
+        tid = 1
+    else:
+        tid = view.shape[0]
+    _ufunc_kernel_dispatcher(tid=tid,
+                             dtype=dtype,
+                             ndims=ndims,
+                             op="isnan",
+                             sub_dispatcher=pk.parallel_for,
+                             out=out,
+                             view=view)
 
 
 def isinf(view):
