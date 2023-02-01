@@ -66,6 +66,7 @@ from pykokkos.lib.info import iinfo, finfo
 from pykokkos.lib.create import (zeros,
                                  ones,
                                  ones_like,
+                                 arange,
                                  full)
 from pykokkos.lib.manipulate import reshape, ravel, expand_dims
 from pykokkos.lib.util import all, any, sum, find_max, searchsorted, col, linspace, logspace
