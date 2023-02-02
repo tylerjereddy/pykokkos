@@ -1,15 +1,7 @@
+import math
+
 import pykokkos as pk
 from pykokkos.lib.ufuncs import _ufunc_kernel_dispatcher
-
-
-@pk.workunit
-def arange_impl_1d_double(tid: int,
-                          start: float,
-                          stop: float,
-                          step: float,
-                          out: pk.View1D[pk.double]):
-    for i in range(start, stop, step):
-        out[tid] = i
 
 
 def arange(start,
@@ -45,24 +37,40 @@ def arange(start,
     must be ``ceil((stop-start)/step)`` if ``stop - start`` and ``step`` have the same sign, and
     length 0 otherwise.
     """
+    print("arange received dtype:", dtype)
+    print("arange received start, stop, step:", start, stop, step)
     if dtype is None:
-        dtype = pk.double
-    val_1 = stop - start
+        if isinstance(start, int) and isinstance(stop, int) and isinstance(step, int):
+            dtype = pk.int64
+        else:
+            dtype = pk.float64
+    if stop is not None:
+        val_1 = stop - start
+    else:
+        val_1 = start
+        stop = start
+        start = 0
     if (val_1 > 0 and step > 0) or (val_1 < 0 and step < 0):
-        size = math.ceil((stop - start) / step)
+        size = math.ceil((val_1) / step)
+        print("estimated size:", size)
         out = pk.View([size], dtype=dtype)
-        _ufunc_kernel_dispatcher(tid=1,
+        if size == 1:
+            out[:] = start
+            return out
+        print("before _ufunc_kernel_dispatcher with dtype", dtype)
+        print("type(start), type(stop), type(step):", type(start), type(stop), type(step))
+        _ufunc_kernel_dispatcher(tid=size,
                                  dtype=dtype,
                                  ndims=1,
                                  op="arange",
                                  sub_dispatcher=pk.parallel_for,
                                  out=out,
-                                 view=view)
-        print("returning out A:", out)
+                                 start=start,
+                                 stop=stop,
+                                 step=step)
         return out
     else:
         out = pk.View([0], dtype=dtype)
-        print("returning out B:", out)
         return out
 
 

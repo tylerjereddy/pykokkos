@@ -399,6 +399,8 @@ class View(ViewType):
             new_other = pk.View((), dtype=other_dtype)
             new_other[:] = other
         elif isinstance(other, pk.View):
+            if self.size == 0 and other.size == 0:
+                return True
             new_other = other
         else:
             raise ValueError("unexpected types!")
@@ -683,12 +685,15 @@ def asarray(obj, /, *, dtype=None, device=None, copy=None):
                 dtype = pk.float64
             view = pk.View([1], dtype=dtype)
             view[:] = obj
+            print("asarray returning view:", view)
             return view
     if dtype is not None:
         arr = np.asarray(obj, dtype=dtype.np_equiv)
     else:
         arr = np.asarray(obj)
     ret = from_numpy(arr)
+    print("asarray returning ret:", ret)
+    print("asarray returning type(ret):", type(ret))
     return ret
 
 

@@ -4,10 +4,12 @@ from inspect import getmembers, isfunction
 
 import numpy as np
 import pykokkos as pk
-from pykokkos.lib import ufunc_workunits
+from pykokkos.lib import ufunc_workunits, create_workunits
 
 kernel_dict = dict(getmembers(ufunc_workunits, isfunction))
-
+kernel_dict2 = dict(getmembers(create_workunits, isfunction))
+kernel_dict = {**kernel_dict, **kernel_dict2}
+print("kernel_dict:", kernel_dict)
 
 def _supported_types_check(dtype_str, supported_type_strings):
     options = ""
@@ -26,18 +28,25 @@ def _ufunc_kernel_dispatcher(tid,
                              op,
                              sub_dispatcher,
                              **kwargs):
+    print("start of _ufunc_kernel_dispatcher")
     dtype_extractor = re.compile(r".*(?:dtype|data_types|DataType)\.(\w+)")
     if ndims == 0:
         ndims = 1
-    res = dtype_extractor.match(str(dtype))
-    dtype_str = res.group(1)
-    if dtype_str == "float32":
+    print("str(dtype):", str(dtype))
+    if str(dtype) == "float32":
         dtype_str = "float"
-    elif dtype_str == "float64":
-        dtype_str = "double"
+    else:
+        res = dtype_extractor.match(str(dtype))
+        dtype_str = res.group(1)
+        if dtype_str == "float32":
+            dtype_str = "float"
+        elif dtype_str == "float64":
+            dtype_str = "double"
     function_name_str = f"{op}_impl_{ndims}d_{dtype_str}"
     desired_workunit = kernel_dict[function_name_str]
     # call the kernel
+    print("desired_workunit:", desired_workunit)
+    print("kwargs:", kwargs)
     ret = sub_dispatcher(tid, desired_workunit, **kwargs)
     return ret
 
@@ -2509,6 +2518,14 @@ def equal(view1, view2):
     out : pykokkos view (bool)
            Output view.
     """
+    print("equal received view1, view2:", view1, view2)
+    print("equal type(view1), type(view2) at START:", type(view1), type(view2))
+    if isinstance(view1, np.floating):
+        new_view = pk.View([1], dtype=pk.float64)
+        new_view[:] = view1
+        view1 = new_view
+    else:
+        print("view1 is not instance:", type(view1))
     if view1.size == 0 and view2.size == 0:
         return pk.View((), dtype=pk.bool)
     view1, view2 = _broadcast_views(view1, view2)
@@ -2523,6 +2540,8 @@ def equal(view1, view2):
         tid = 1
     else:
         tid = view1.shape[0]
+    print("equal view1, view2 before kernel dispatch:", view1, view2)
+    print("equal type(view1), type(view2), type(out) before kernel dispatch:", type(view1), type(view2), type(out))
     _ufunc_kernel_dispatcher(tid=tid,
                              dtype=effective_dtype,
                              ndims=ndims,
