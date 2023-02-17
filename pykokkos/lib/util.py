@@ -128,9 +128,17 @@ def flip(x, /, *, axis=None):
     -------
     out (View) – an output view having the same data type and shape as ``x`` and whose elements, relative to ``x``, are reordered.
     """
+    print("flip received x:", x)
     dtype = x.dtype
+    print("flip received x.dtype:", x.dtype)
     ndims = len(x.shape)
-    out = pk.View([*x.shape], dtype=dtype)
+    print("flip received x.ndim:", ndims)
+    print("flip received x.shape:", x.shape)
+    if x.shape == ():
+        out = pk.View([], dtype=dtype)
+    else:
+        out = pk.View([*x.shape], dtype=dtype)
+    print("out.shape:", out.shape)
     if x.shape == ():
         tid = 1
     else:

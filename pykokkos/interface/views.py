@@ -368,6 +368,7 @@ class View(ViewType):
 
     def __eq__(self, other):
         # avoid circular import with scoped import
+        print("start of View __eq__ with self, other:", self, other)
         from pykokkos.lib.ufuncs import equal
         if isinstance(other, float):
             new_other = pk.View((), dtype=pk.double)
@@ -520,6 +521,12 @@ class Subview(ViewType):
         return base_view
 
     def __eq__(self, other):
+        print("__eq__ received self:", self)
+        print("__eq__ received other:", other)
+        print("__eq__ received self.dtype:", self.dtype)
+        print("__eq__ received other.dtype:", other.dtype)
+        print("__eq__ received type(self):", type(self))
+        print("__eq__ received type(other):", type(other))
         from pykokkos.lib.ufuncs import equal
         if isinstance(other, float):
             new_other = pk.View((), dtype=pk.double)
@@ -551,10 +558,15 @@ class Subview(ViewType):
             new_other = pk.View((), dtype=other_dtype)
             new_other[:] = other
         elif isinstance(other, pk.Subview):
+            print("other is subview!")
             new_other = other
         else:
             print("type(other):", type(other))
             raise ValueError("unexpected types!")
+        print("new_other:", new_other)
+        print("type(new_other):", type(new_other))
+        print("self.dtype:", self.dtype)
+        print("new_other.dtype:", new_other.dtype)
         return equal(self, new_other)
 
 

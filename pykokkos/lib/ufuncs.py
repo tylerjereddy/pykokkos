@@ -37,8 +37,11 @@ def _ufunc_kernel_dispatcher(tid,
         dtype_str = "double"
     function_name_str = f"{op}_impl_{ndims}d_{dtype_str}"
     desired_workunit = kernel_dict[function_name_str]
+    print("desired_workunit:", desired_workunit)
     # call the kernel
+    print("before kernel call!")
     ret = sub_dispatcher(tid, desired_workunit, **kwargs)
+    print("after kernel call!")
     return ret
 
 
@@ -83,14 +86,25 @@ def _typematch_views(view1, view2):
             dtype1 = pk.uint8
             res2_dtype_str = "uint8"
             dtype2 = pk.uint8
+        print("res1_dtype_str:", res1_dtype_str)
+        print("res2_dtype_str:", res2_dtype_str)
+        if res1_dtype_str != res2_dtype_str:
+            pass
         if (("int" in res1_dtype_str and "int" in res2_dtype_str) or
             ("float" in res1_dtype_str and "float" in res2_dtype_str)):
             dtype_1_width = int(res1_dtype_str.split("t")[1])
             dtype_2_width = int(res2_dtype_str.split("t")[1])
             if dtype_1_width >= dtype_2_width:
                 effective_dtype = dtype1
-                view2_new = pk.View([*view2.shape], dtype=effective_dtype)
-                view2_new[:] = view2
+                if view2.shape == ():
+                    view2_new = pk.View([], dtype=effective_dtype)
+                else:
+                    try:
+                        view2_new = pk.View([*view2.shape], dtype=effective_dtype)
+                        view2_new[:] = view2
+                    except ValueError:
+                        view2_new = pk.View([view2.shape], dtype=effective_dtype)
+                        view2_new[:] = view2
                 view2 = view2_new
             else:
                 effective_dtype = dtype2
@@ -2499,20 +2513,26 @@ def equal(view1, view2):
     out : pykokkos view (bool)
            Output view.
     """
+    print("*** equal ufunc received view1, view2:", view1, view2)
     if view1.size == 0 and view2.size == 0:
         return pk.View((), dtype=pk.bool)
     view1, view2 = _broadcast_views(view1, view2)
     dtype1 = view1.dtype
     dtype2 = view2.dtype
+    print("*** equal ufunc checkpoint 1")
     view1, view2, effective_dtype = _typematch_views(view1, view2)
+    print("*** equal ufunc checkpoint 2")
     ndims = len(view1.shape)
     if ndims > 5:
         raise NotImplementedError("equal() ufunc only supports up to 5D views")
     out = pk.View([*view1.shape], dtype=pk.bool)
+    print("*** equal ufunc checkpoint 3")
     if view1.shape == ():
         tid = 1
     else:
         tid = view1.shape[0]
+    print("*** equal ufunc checkpoint 4")
+    print("view1, view2 before ufunc:", view1, view2)
     _ufunc_kernel_dispatcher(tid=tid,
                              dtype=effective_dtype,
                              ndims=ndims,
@@ -2521,6 +2541,7 @@ def equal(view1, view2):
                              out=out,
                              view1=view1,
                              view2=view2)
+    print("*** equal ufunc checkpoint 5")
     return out
 
 
