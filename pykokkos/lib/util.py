@@ -1,4 +1,5 @@
 import pykokkos as pk
+from pykokkos.lib.ufuncs import _ufunc_kernel_dispatcher
 
 import numpy as np
 
@@ -112,3 +113,41 @@ def logspace(start, stop, num=50, base=10):
     y = linspace(start, stop, num)
 
     return power(base, y)
+
+
+def flip(x, /, *, axis=None):
+    """
+    Reverses the order of elements in an array along the given axis. The shape of the array must be preserved.
+
+    Parameters
+    ----------
+    x (View) – input view.
+
+    axis (Optional[Union[int, Tuple[int, ...]]]) – axis (or axes) along which to flip. If axis is None,
+    the function must flip all input view axes. If axis is negative, the function must count from the
+    last dimension. If provided more than one axis, the function must flip only the specified axes. Default: None.
+
+
+    Returns
+    -------
+    out (View) – an output view having the same data type and shape as ``x`` and whose elements, relative to ``x``, are reordered.
+    """
+    dtype = x.dtype
+    ndims = len(x.shape)
+    out = pk.View([*x.shape], dtype=dtype)
+    if x.shape == ():
+        tid = 1
+    else:
+        tid = x.shape[0]
+    # TODO: flip() isn't really a ufunc, so
+    # not sure we should be reusing this machinery;
+    # perhaps refactor to use a separte dispatch mechanism
+    # later?
+    _ufunc_kernel_dispatcher(tid=tid,
+                             dtype=dtype,
+                             ndims=ndims,
+                             op="flip",
+                             sub_dispatcher=pk.parallel_for,
+                             out=out,
+                             view=x)
+    return out

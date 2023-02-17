@@ -2,6 +2,16 @@ import pykokkos as pk
 
 
 @pk.workunit
+def flip_impl_1d_bool(tid: int, view: pk.View1D[pk.uint8], out: pk.View1D[pk.uint8]):
+    out[tid] = view[tid]
+
+
+@pk.workunit
+def flip_impl_1d_double(tid: int, view: pk.View1D[pk.double], out: pk.View1D[pk.double]):
+    out[tid] = view[tid]
+
+
+@pk.workunit
 def exp_impl_1d_double(tid: int, view: pk.View1D[pk.double], out: pk.View1D[pk.double]):
     out[tid] = exp(view[tid])
 
