@@ -13,8 +13,11 @@ from tqdm import tqdm
 
 
 if __name__ == "__main__":
-    scenario_name = "numpy_gp160_sqrt"
-    current_sqrt_fn = "np.sqrt"
+    scenario_name = "pk_gp160_sqrt"
+    current_sqrt_fn = "pk.sqrt"
+    space = pk.ExecutionSpace.OpenMP
+    #space = pk.ExecutionSpace.Cuda
+    pk.set_default_space(space)
 
     num_global_repeats = 50
     num_repeats = 5000
@@ -25,6 +28,8 @@ if __name__ == "__main__":
     rng = np.random.default_rng(18898787)
     arr = rng.random(array_size_1d).astype(float)
     view = pk.from_numpy(arr)
+    arr = view
+    #arr = cp.array(arr)
 
     num_threads = os.environ.get("OMP_NUM_THREADS")
     if num_threads is None:
