@@ -175,7 +175,7 @@ def parallel_for(*args, **kwargs) -> None:
         "for",
         **kwargs)
 
-    workunit_cache[cache_key] = (func, args)
+    #workunit_cache[cache_key] = (func, args)
     func(**args)
 
 def reduce_body(operation: str, *args, **kwargs) -> Union[float, int]:
@@ -217,7 +217,7 @@ def reduce_body(operation: str, *args, **kwargs) -> Union[float, int]:
         operation,
         **kwargs)
 
-    workunit_cache[cache_key] = (func, args)
+    #workunit_cache[cache_key] = (func, args)
     return func(**args)
 
 def parallel_reduce(*args, **kwargs) -> Union[float, int]:
