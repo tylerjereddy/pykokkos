@@ -217,7 +217,7 @@ def sqrt_impl_2d_float(tid: int, view: pk.View2D[pk.float], out: pk.View2D[pk.fl
         out[tid][i] = sqrt(view[tid][i]) # type: ignore
 
 
-def sqrt(view, out):
+def sqrt(view):
     """
     Return the non-negative square root of the argument, element-wise.
 
@@ -241,6 +241,7 @@ def sqrt(view, out):
     # are available in pykokkos?
     if len(view.shape) > 2:
         raise NotImplementedError("only up to 2D views currently supported for sqrt() ufunc.")
+    out = pk.View(view.shape, view.dtype)
     if "double" in str(view.dtype) or "float64" in str(view.dtype):
         if view.shape == ():
             pk.parallel_for(1, sqrt_impl_1d_double, view=view, out=out)
@@ -255,6 +256,7 @@ def sqrt(view, out):
             pk.parallel_for(view.shape[0], sqrt_impl_1d_float, view=view, out=out)
         elif len(view.shape) == 2:
             pk.parallel_for(view.shape[0], sqrt_impl_2d_float, view=view, out=out)
+    return out
 
 
 @pk.workunit
